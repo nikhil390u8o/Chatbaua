@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Chat</title>
+
+<style>
+:root{
+  --text-primary:#ffffff;
+  --border-color:#333;
+
+  /* Default: Purple Solid */
+  --theme-user-bg:#8b5cf6;
+  --theme-send-bg:#10a37f;
+  --theme-accent:#8b5cf6;
+}
+
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+body{
+  font-family:system-ui,Roboto;
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  background:url("https://files.catbox.moe/rn2vyl.jpg") no-repeat center center fixed;
+  background-size:cover;
+  color:var(--text-primary);
+  transition: background-image 0.5s ease;
+}
+
+.overlay{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  background:rgba(0,0,0,0.0);
+  position:relative;
+}
+
+/* ===== HEADER ===== */
+.header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px;
+  background:rgba(0,0,0,0.6);
+  border-bottom:1px solid var(--border-color);
+  position:relative;
+  z-index:1001; /* Above menu */
+}
+.header img{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  border:2px solid #fff;
+  object-fit:cover;
+}
+.header .title{
+  font-size:18px;
+  font-weight:600;
+  color:#fff;
+}
+
+/* Hamburger menu button */
+#menu-btn{
+  width:40px;
+  height:40px;
+  background:none;
+  border:none;
+  cursor:pointer;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:4px;
+  padding:8px;
+}
+#menu-btn span{
+  width:20px;
+  height:2px;
+  background:#fff;
+  border-radius:2px;
+  transition:0.3s;
+}
+
+/* Background menu - FIXED: Higher z-index and better layering */
+#bg-menu{
+  position:absolute;
+  top:70px;
+  right:14px;
+  background:rgba(0,0,0,0.85);
+  border:1px solid var(--border-color);
+  border-radius:12px;
+  padding:12px;
+  display:none;
+  flex-direction:column;
+  gap:10px;
+  z-index:1000; /* High z-index to appear on top */
+  box-shadow:0 8px 30px rgba(0,0,0,0.7);
+  width:200px;
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+}
+#bg-menu.show{
+  display:flex;
+}
+.bg-grid{
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  gap:8px;
+}
+.bg-option{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  background-size:cover;
+  background-position:center;
+  cursor:pointer;
+  border:3px solid transparent;
+  transition:0.3s;
+  box-shadow:0 2px 6px rgba(0,0,0,0.4);
+}
+.bg-option:hover{
+  border:3px solid var(--theme-accent);
+  transform:scale(1.15);
+}
+
+/* Theme menu */
+#theme-btn{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  background:#444;
+  border:none;
+  cursor:pointer;
+  color:#fff;
+  font-size:20px;
+}
+#theme-menu{
+  position:absolute;
+  bottom:70px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,0.85);
+  border:1px solid var(--border-color);
+  border-radius:12px;
+  padding:12px;
+  display:none;
+  gap:10px;
+  z-index:1000;
+  box-shadow:0 -8px 30px rgba(0,0,0,0.7);
+  backdrop-filter:blur(12px);
+}
+#theme-menu.show{display:flex;}
+.theme-option{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  cursor:pointer;
+  border:3px solid transparent;
+  transition:0.2s;
+}
+.theme-option:hover{
+  transform:scale(1.15);
+  border:3px solid #fff;
+}
+.theme-purple{background:#8b5cf6;}
+.theme-blue{background:#3b82f6;}
+.theme-green{background:#10b981;}
+.theme-transparent{
+  background: linear-gradient(135deg, rgba(139,92,246,0.4), rgba(255,255,255,0.15));
+  border: 2px dashed #8b5cf6 !important;
+}
+
+/* ===== CHAT ===== */
+#chat-container{
+  flex:1;
+  padding:16px;
+  overflow-y:auto;
+  pointer-events: auto; /* Allow interaction with messages */
+  position:relative;
+  z-index:1;
+}
+.message{
+  max-width:85%;
+  margin-bottom:16px;
+  padding:12px 16px;
+  border-radius:18px;
+  white-space:pre-wrap;
+  word-break:break-word;
+  position:relative;
+  pointer-events: auto;
+}
+.user-message{
+  background:var(--theme-user-bg);
+  margin-left:auto;
+}
+.bot-message{
+  background:#121212;
+  margin-right:auto;
+  border-bottom-left-radius:4px;
+}
+.name-tag{
+  position:absolute;
+  top:-16px;
+  font-size:12px;
+  opacity:0.8;
+}
+.user-message .name-tag{right:10px;}
+.bot-message .name-tag{left:10px; color:var(--theme-accent);}
+
+/* ===== INPUT ===== */
+#input-container{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:12px;
+  border-top:1px solid var(--border-color);
+  background:rgba(0,0,0,0.7);
+  position:relative;
+  z-index:1001;
+}
+#user-input{
+  flex:1;
+  padding:12px 16px;
+  border-radius:24px;
+  border:1px solid var(--border-color);
+  background:#000;
+  color:#fff;
+  outline:none;
+}
+#send-btn{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  border:none;
+  cursor:pointer;
+  color:#fff;
+  background:var(--theme-send-bg);
+  font-size:18px;
+}
+
+/* Transparent Theme Styles */
+body.transparent-theme .user-message {
+  background: rgba(139, 92, 246, 0.25) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+body.transparent-theme .bot-message {
+  background: rgba(18, 18, 18, 0.45) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+body.transparent-theme .header {
+  background: rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(12px);
+}
+body.transparent-theme #input-container {
+  background: rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(12px);
+}
+body.transparent-theme #user-input {
+  background: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(8px);
+}
+body.transparent-theme .name-tag {
+  background: rgba(0, 0, 0, 0.6);
+  padding: 2px 8px;
+  border-radius: 8px;
+  backdrop-filter: blur(4px);
+}
+body.transparent-theme #bg-menu,
+body.transparent-theme #theme-menu {
+  background: rgba(0, 0, 0, 0.7) !important;
+  backdrop-filter: blur(12px);
+}
+</style>
+</head>
+
+<body>
+
+<div class="overlay">
+
+<!-- HEADER -->
+<div class="header">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <img src="https://files.catbox.moe/orqaah.jpg" alt="AI">
+    <div class="title">AI Assistant</div>
+  </div>
+
+  <button id="menu-btn" aria-label="Change background">
+    <span></span><span></span><span></span>
+  </button>
+
+  <!-- Background Menu - Now appears on top -->
+  <div id="bg-menu">
+    <div class="bg-grid">
+      <div class="bg-option" style="background-image:url('https://files.catbox.moe/ihbpcu.jpg')" onclick="changeBg('https://files.catbox.moe/ihbpcu.jpg')"></div>
+      <div class="bg-option" style="background-image:url('https://files.catbox.moe/dv3ywb.jpg')" onclick="changeBg('https://files.catbox.moe/dv3ywb.jpg')"></div>
+      <div class="bg-option" style="background-image:url('https://files.catbox.moe/guo63n.jpg')" onclick="changeBg('https://files.catbox.moe/guo63n.jpg')"></div>
+      <div class="bg-option" style="background-image:url('https://files.catbox.moe/r0bhla.jpg')" onclick="changeBg('https://files.catbox.moe/r0bhla.jpg')"></div>
+      <div class="bg-option" style="background-image:url('https://files.catbox.moe/rn2vyl.jpg')" onclick="changeBg('https://files.catbox.moe/rn2vyl.jpg')"></div>
+      <div class="bg-option" style="background-image:url('https://files.catbox.moe/y6t1y3.jpg')" onclick="changeBg('https://files.catbox.moe/y6t1y3.jpg')"></div>
+      <div class="bg-option" style="background-image:url('https://files.catbox.moe/6wj7ji.jpg')" onclick="changeBg('https://files.catbox.moe/6wj7ji.jpg')"></div>
+      <div class="bg-option" style="background-image:url('https://files.catbox.moe/qtwi3b.jpg')" onclick="changeBg('https://files.catbox.moe/qtwi3b.jpg')"></div>
+    </div>
+  </div>
+</div>
+
+<!-- CHAT -->
+<div id="chat-container"></div>
+
+<!-- INPUT -->
+<div id="input-container">
+  <button id="theme-btn">🎨</button>
+
+  <div id="theme-menu">
+    <div class="theme-option theme-purple" onclick="changeTheme('purple')"></div>
+    <div class="theme-option theme-blue" onclick="changeTheme('blue')"></div>
+    <div class="theme-option theme-green" onclick="changeTheme('green')"></div>
+    <div class="theme-option theme-transparent" onclick="changeTheme('transparent')"></div>
+  </div>
+
+  <input id="user-input" placeholder="Type a message…" onkeydown="onKey(event)">
+  <button id="send-btn" onclick="send()">➤</button>
+</div>
+
+</div>
+
+<script>
+const url="https://api.sambanova.ai/v1/chat/completions";
+const headers={
+  "Authorization":"Bearer b927dab6-d235-4387-a0c5-361321ed0651",
+  "Content-Type":"application/json"
+};
+
+let messages=[{role:"system",content:"You are a helpful AI assistant."}];
+
+const chat=document.getElementById("chat-container");
+const input=document.getElementById("user-input");
+const menuBtn=document.getElementById("menu-btn");
+const bgMenu=document.getElementById("bg-menu");
+const themeBtn=document.getElementById("theme-btn");
+const themeMenu=document.getElementById("theme-menu");
+const sendBtn=document.getElementById("send-btn");
+
+// Menu toggles
+menuBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  bgMenu.classList.toggle("show");
+});
+
+themeBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  themeMenu.classList.toggle("show");
+});
+
+// Close menus on outside click
+document.addEventListener("click", (e) => {
+  if (!menuBtn.contains(e.target) && !bgMenu.contains(e.target)) {
+    bgMenu.classList.remove("show");
+  }
+  if (!themeBtn.contains(e.target) && !themeMenu.contains(e.target)) {
+    themeMenu.classList.remove("show");
+  }
+});
+
+// Change background
+function changeBg(imageUrl) {
+  document.body.style.backgroundImage = `url('${imageUrl}')`;
+  bgMenu.classList.remove("show");
+}
+
+// Change theme
+function changeTheme(theme) {
+  if (theme === 'purple') {
+    document.documentElement.style.setProperty('--theme-user-bg', '#8b5cf6');
+    document.documentElement.style.setProperty('--theme-send-bg', '#10a37f');
+    document.documentElement.style.setProperty('--theme-accent', '#8b5cf6');
+    document.body.classList.remove('transparent-theme');
+  } else if (theme === 'blue') {
+    document.documentElement.style.setProperty('--theme-user-bg', '#3b82f6');
+    document.documentElement.style.setProperty('--theme-send-bg', '#10a37f');
+    document.documentElement.style.setProperty('--theme-accent', '#3b82f6');
+    document.body.classList.remove('transparent-theme');
+  } else if (theme === 'green') {
+    document.documentElement.style.setProperty('--theme-user-bg', '#10b981');
+    document.documentElement.style.setProperty('--theme-send-bg', '#10a37f');
+    document.documentElement.style.setProperty('--theme-accent', '#10b981');
+    document.body.classList.remove('transparent-theme');
+  } else if (theme === 'transparent') {
+    document.documentElement.style.setProperty('--theme-user-bg', 'rgba(139, 92, 246, 0.25)');
+    document.documentElement.style.setProperty('--theme-send-bg', 'rgba(16, 163, 127, 0.7)');
+    document.documentElement.style.setProperty('--theme-accent', '#8b5cf6');
+    document.body.classList.add('transparent-theme');
+  }
+  themeMenu.classList.remove("show");
+}
+
+function addMessage(text, isUser, typing=false){
+  const div=document.createElement("div");
+  div.className="message "+(isUser?"user-message":"bot-message");
+
+  const name=document.createElement("div");
+  name.className="name-tag";
+  name.textContent=isUser?"You":"AI";
+  div.appendChild(name);
+
+  const span=document.createElement("span");
+  div.appendChild(span);
+
+  chat.appendChild(div);
+  chat.scrollTop=chat.scrollHeight;
+
+  if(typing){
+    let i=0;
+    (function type(){
+      if(i<text.length){
+        span.textContent+=text.charAt(i);
+        i++;
+        setTimeout(type,25);
+      }
+    })();
+  }else{
+    span.textContent=text;
+  }
+}
+
+async function send(){
+  const text=input.value.trim();
+  if(!text) return;
+
+  addMessage(text,true);
+  messages.push({role:"user",content:text});
+  input.value="";
+
+  const payload={
+    model:"ALLaM-7B-Instruct-preview",
+    messages:messages,
+    temperature:0.2
+  };
+
+  try{
+    const r=await fetch(url,{
+      method:"POST",
+      headers:headers,
+      body:JSON.stringify(payload)
+    });
+
+    const raw=await r.text();
+    if(!r.ok){
+      addMessage(raw,false);
+      return;
+    }
+
+    const data=JSON.parse(raw);
+    const reply=data.choices[0].message.content.trim();
+
+    addMessage(reply,false,true);
+    messages.push({role:"assistant",content:reply});
+
+  }catch(e){
+    addMessage("Error: "+e.message,false);
+  }
+}
+
+function onKey(e){
+  if(e.key==="Enter"){
+    e.preventDefault();
+    send();
+  }
+}
+
+sendBtn.addEventListener("click", send);
+</script>
+
+</body>
+</html>
